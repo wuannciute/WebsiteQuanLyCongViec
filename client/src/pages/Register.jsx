@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import "./Login/style.scss";
-import { Link, Navigate } from "react-router-dom";
-import registerThunk from "../redux/thunk/register";
-import { useDispatch, useSelector } from "react-redux";
+import { Link, Navigate, useNavigate } from "react-router-dom"; // Thêm useNavigate
+// import registerThunk from "../redux/thunk/register"; // Không cần dùng thunk nữa
+import { useSelector } from "react-redux";
 
 const Register = () => {
     const [register, setRegister] = useState({
@@ -18,8 +18,9 @@ const Register = () => {
         confirmPw: "",
     });
 
-    const dispatch = useDispatch();
+    // const dispatch = useDispatch(); // Không cần dùng dispatch nữa
     const { auth } = useSelector((state) => state);
+    const navigate = useNavigate(); // Khởi tạo navigate
 
     const validateEmail = (email) => {
         return email.match(
@@ -62,9 +63,13 @@ const Register = () => {
         setRegister({ ...register, [name]: value });
     }
 
+    // =========================================================
+    // HÀM HANDLESUBMIT ĐÃ ĐƯỢC THAY THẾ HOÀN TOÀN
+    // =========================================================
     function handleSubmit(e) {
         e.preventDefault();
         const err = checkValidate(register);
+
         if (err.email || err.username || err.password || err.confirmPw) {
             setErrForm({
                 email: err.email,
@@ -72,9 +77,36 @@ const Register = () => {
                 password: err.password,
                 confirmPw: err.confirmPw,
             });
-        } else {
-            dispatch(registerThunk(register));
+            return; 
         }
+        
+        const registerData = {
+            email: register.email,
+            username: register.username,
+            password: register.password,
+        };
+
+        fetch('http://localhost:5000/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(registerData),
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(errData => { throw new Error(errData.err) });
+            }
+            return res.json();
+        })
+        .then(data => {
+            alert(data.msg); 
+            navigate('/login');
+        })
+        .catch(error => {
+            console.error('Lỗi khi đăng ký:', error);
+            alert(error.message || 'Đã có lỗi xảy ra.');
+        });
     }
 
     if (auth?.user) {
@@ -103,7 +135,7 @@ const Register = () => {
                 </div>
                 {errForm.email && (
                     <div className="input-group__label">
-                        <i class="bx bx-error-alt"></i>
+                        <i className="bx bx-error-alt"></i>
                         <p>{errForm.email}</p>
                     </div>
                 )}
@@ -119,7 +151,7 @@ const Register = () => {
                 </div>
                 {errForm.username && (
                     <div className="input-group__label">
-                        <i class="bx bx-error-alt"></i>
+                        <i className="bx bx-error-alt"></i>
                         <p>{errForm.username}</p>
                     </div>
                 )}
@@ -136,7 +168,7 @@ const Register = () => {
                 </div>
                 {errForm.password && (
                     <div className="input-group__label">
-                        <i class="bx bx-error-alt"></i>
+                        <i className="bx bx-error-alt"></i>
                         <p>{errForm.password}</p>
                     </div>
                 )}
@@ -155,7 +187,7 @@ const Register = () => {
                 </div>
                 {errForm.confirmPw && (
                     <div className="input-group__label">
-                        <i class="bx bx-error-alt"></i>
+                        <i className="bx bx-error-alt"></i>
                         <p>{errForm.confirmPw}</p>
                     </div>
                 )}

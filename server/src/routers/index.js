@@ -4,7 +4,8 @@ import projectRouter from "./projectRouter.js";
 
 const router = Router();
 
-router.use("/api", authRouter);
-router.use("/api", projectRouter);
+// mount trực tiếp vì đã có /api ở index.js
+router.use("/", authRouter);
+router.use("/", projectRouter);
 
 export default router;

@@ -10,10 +10,7 @@ dotenv.config();
 const secretRfToken = process.env.RF_TOKEN;
 const secretAcToken = process.env.AC_TOKEN;
 
-// =========================================================
-// HÀM CŨ CỦA BẠN (GIỮ NGUYÊN)
-// =========================================================
-
+// HÀM REGISTER ĐÃ THAY ĐỔI LUỒNG
 export const register = async (req, res) => {
     try {
         const { email, username, password } = req.body;
@@ -28,21 +25,19 @@ export const register = async (req, res) => {
 
         const err = validateRegister(username, password);
         if (err.length > 0) return res.status(400).json({ err: err });
+
         const hashPw = await bcrypt.hash(password, 12);
         const user = new User({ email, username, password: hashPw });
         
-        const acToken = jwt.sign({ id: user._id }, secretAcToken, {
-            expiresIn: "3d",
-        });
-
         await user.save();
 
+        // Chỉ trả về tin nhắn thành công, không trả về token
         return res.json({
-            msg: "Đăng kí tài khoản thành công",
-            user: user,
-            accessToken: acToken,
+            msg: "Đăng kí tài khoản thành công. Vui lòng đăng nhập.",
         });
+
     } catch (error) {
+        console.log(error);
         res.status(500).json({ err: error.message });
     }
 };
@@ -74,6 +69,7 @@ export const login = async (req, res) => {
             accessToken: acToken,
         });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ err: error.message });
     }
 };
@@ -91,6 +87,7 @@ export const refreshToken = async (req, res) => {
             return res.json({ accessToken: accessToken, user: findUsername });
         });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ err: error.message });
     }
 };
@@ -103,6 +100,7 @@ export const searchUser = async (req, res) => {
         }).select({ username: 1, avatar: 1 });
         return res.json({ searchUsers: findUsers });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ err: error.message });
     }
 };
@@ -125,10 +123,9 @@ function validateRegister(username, password) {
 
 
 // =========================================================
-// CÁC HÀM MỚI CHO CHỨC NĂNG QUÊN MẬT KHẨU
+// CÁC HÀM CHO CHỨC NĂNG QUÊN MẬT KHẨU (ĐÃ SỬA LỖI)
 // =========================================================
 
-// Hàm gửi email
 const sendEmail = async (options) => {
     const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -148,64 +145,70 @@ const sendEmail = async (options) => {
     await transporter.sendMail(mailOptions);
 };
 
-// Controller cho chức năng Quên Mật khẩu
 export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
 
         if (!user) {
-            // Vẫn trả về thành công để bảo mật, tránh kẻ xấu dò email
             return res.json({ msg: "Nếu email tồn tại, một mã khôi phục đã được gửi." });
         }
 
-        // Tạo mã OTP gồm 6 chữ số
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        user.passwordResetOTP = otp;
-        user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // Hết hạn sau 10 phút
-        await user.save();
+        const otpExpires = Date.now() + 10 * 60 * 1000;
 
-        try {
-            await sendEmail({
-                to: user.email,
-                subject: "Mã khôi phục mật khẩu",
-                text: `Mã khôi phục mật khẩu của bạn là: ${otp}. Mã này sẽ hết hạn sau 10 phút.`,
-            });
-            res.json({ msg: "Một mã khôi phục đã được gửi tới email của bạn." });
-        } catch (err) {
-            user.passwordResetOTP = undefined;
-            user.passwordResetExpires = undefined;
-            await user.save();
-            return res.status(500).json({ err: "Lỗi khi gửi email. Vui lòng thử lại." });
-        }
+        await sendEmail({
+            to: user.email,
+            subject: "Mã khôi phục mật khẩu",
+            text: `Mã khôi phục mật khẩu của bạn là: ${otp}. Mã này sẽ hết hạn sau 10 phút.`,
+        });
+        
+        await User.updateOne(
+            { _id: user._id },
+            {
+                passwordResetOTP: otp,
+                passwordResetExpires: otpExpires,
+            }
+        );
+
+        return res.json({ msg: "Một mã khôi phục đã được gửi tới email của bạn." });
+
     } catch (error) {
-        res.status(500).json({ err: error.message });
+        console.log(error);
+        return res.status(500).json({ err: "Đã xảy ra lỗi, vui lòng thử lại." });
     }
 };
 
-// Controller cho chức năng Đặt lại Mật khẩu
 export const resetPassword = async (req, res) => {
     try {
         const { email, otp, password } = req.body;
         const user = await User.findOne({
             email,
             passwordResetOTP: otp,
-            passwordResetExpires: { $gt: Date.now() }, // Kiểm tra token còn hạn không
+            passwordResetExpires: { $gt: Date.now() },
         });
 
         if (!user) {
             return res.status(400).json({ err: "Mã OTP không hợp lệ hoặc đã hết hạn." });
         }
 
-        // Cập nhật mật khẩu mới
-        user.password = await bcrypt.hash(password, 12);
-        // Xóa mã OTP sau khi sử dụng
-        user.passwordResetOTP = undefined;
-        user.passwordResetExpires = undefined;
-        await user.save();
+        const hashPw = await bcrypt.hash(password, 12);
+
+        await User.updateOne(
+            { _id: user._id },
+            {
+                password: hashPw,
+                $unset: {
+                    passwordResetOTP: 1, 
+                    passwordResetExpires: 1 
+                }
+            }
+        );
 
         res.json({ msg: "Cập nhật mật khẩu thành công." });
+
     } catch (error) {
-        res.status(500).json({ err: error.message });
+        console.log(error);
+        res.status(500).json({ err: "Đã có lỗi xảy ra." });
     }
 };

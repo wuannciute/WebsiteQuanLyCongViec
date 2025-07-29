@@ -11,9 +11,7 @@ const Login = () => {
     });
 
     const navigate = useNavigate();
-
     const { auth } = useSelector((state) => state);
-
     const dispatch = useDispatch();
 
     function handleChangeInput(e) {
@@ -21,16 +19,28 @@ const Login = () => {
         setLogin({ ...login, [name]: value });
     }
 
-    function handleSubmit(e) {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        dispatch(loginThunk(login));
-    }
+        try {
+            const result = await dispatch(loginThunk(login)).unwrap();
+
+            if (result.accessToken) {
+                localStorage.setItem('accessToken', result.accessToken);
+            } else {
+                 alert("Đăng nhập thành công nhưng không nhận được token.");
+            }
+
+        } catch (error) {
+            console.error('Đăng nhập thất bại:', error);
+            alert(error || "Email hoặc mật khẩu không chính xác.");
+        }
+    };
 
     useEffect(() => {
-        if (auth?.user) {
+        if (auth.user) {
             navigate("/");
         }
-    }, [auth?.user, navigate]);
+    }, [auth.user, navigate]);
 
     return (
         <div className="login-page">
@@ -66,10 +76,7 @@ const Login = () => {
                     <i className="bx bxs-lock-alt"></i>
                 </div>
                 <button>Đăng nhập</button>
-
-                {/* THAY ĐỔI DUY NHẤT NẰM Ở DÒNG DƯỚI ĐÂY */}
                 <Link to="/forgot-password">Quên mật khẩu</Link>
-                
                 <p>
                     Bạn chưa có tài khoản?{" "}
                     <Link to={"/register"}>Đăng kí tại đây</Link>

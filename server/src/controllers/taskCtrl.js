@@ -110,3 +110,38 @@ export const deleteTask = async (req, res) => {
         res.status(500).json({ err: error.message });
     }
 };
+
+
+// Thêm hàm này vào cuối file của bạn
+export const updateWorkStatus = async (req, res) => {
+    try {
+        const { workId } = req.params; // Lấy workId từ URL
+        const { isCompleted } = req.body; // Lấy trạng thái mới từ request body
+
+        // Kiểm tra xem isCompleted có được gửi lên không
+        if (typeof isCompleted !== 'boolean') {
+            return res.status(400).json({ err: "Trạng thái 'isCompleted' phải là true hoặc false." });
+        }
+
+        // Tìm và cập nhật Work trong database
+        // Dùng findOneAndUpdate để tìm và cập nhật trong 1 lệnh
+        const updatedWork = await Work.findOneAndUpdate(
+            { _id: workId },
+            { isCompleted: isCompleted },
+            { new: true } // Tùy chọn này để lệnh trả về document đã được cập nhật
+        );
+
+        if (!updatedWork) {
+            return res.status(404).json({ err: "Không tìm thấy nhiệm vụ con." });
+        }
+
+        return res.json({
+            msg: "Cập nhật trạng thái thành công.",
+            work: updatedWork,
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ err: error.message });
+    }
+};

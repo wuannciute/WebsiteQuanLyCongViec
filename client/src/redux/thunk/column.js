@@ -21,7 +21,7 @@ const createTaskComment = createAsyncThunk(
         try {
             const res = await postApi(
                 `project/${idProject}/task/${idTask}/comment`,
-                data,
+                { data },
                 token
             );
             await postApi("/activate", { content, project: idProject }, token);
@@ -33,6 +33,9 @@ const createTaskComment = createAsyncThunk(
     }
 );
 
+// =========================================================
+// HÀM NÀY ĐÃ ĐƯỢC THAY THẾ BẰNG CODE SỬA LỖI
+// =========================================================
 const updateTask = createAsyncThunk(
     "users/updateTask",
     async ({ data, token, idProject, idTask, content }, thunkApi) => {
@@ -42,7 +45,13 @@ const updateTask = createAsyncThunk(
                 data,
                 token
             );
-            await postApi("/activate", { content, project: idProject }, token);
+            
+            // Nếu không có 'content' được gửi lên, hãy tạo một nội dung mặc định.
+            const activityContent = content || `đã cập nhật một thông tin trong thẻ '${res.data.task.title}'`;
+
+            // Luôn gửi activityContent để đảm bảo không bị lỗi
+            await postApi("/activate", { content: activityContent, project: idProject }, token);
+            
             return res.data;
         } catch (error) {
             const errMsg = error.response.data.err || error.message;

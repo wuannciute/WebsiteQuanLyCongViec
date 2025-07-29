@@ -1,6 +1,14 @@
 import React from "react";
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 const CommentItem = ({ comment }) => {
+    // Tính toán thời gian đã trôi qua từ comment.createdAt
+    const timeAgo = formatDistanceToNow(new Date(comment.createdAt), {
+        addSuffix: true, // Thêm chữ "trước"
+        locale: vi,      // Dịch sang Tiếng Việt
+    });
+
     return (
         <div className="comment__item">
             <div className="comment__item-header">
@@ -21,7 +29,10 @@ const CommentItem = ({ comment }) => {
                     <i className="bx bx-smile"></i>
                 </div>
                 <div className="comment__item-footer__reply">Phản hồi</div>
-                <div className="comment__item-footer__time">6 giờ trước</div>
+
+                {/* THAY THẾ DÒNG CODE CŨ BẰNG DÒNG NÀY */}
+                <div className="comment__item-footer__time">{timeAgo}</div>
+                
             </div>
         </div>
     );

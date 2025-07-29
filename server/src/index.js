@@ -20,14 +20,20 @@ app.use(cookieParser());
 
 mongoose
     .connect(URI_DB)
-    .then(() => {
-        console.log("Connect DB success.");
-    })
-    .catch((err) => {
-        console.log("Err DB: ", err.message);
-    });
+    .then(() => console.log("Connect DB success."))
+    .catch((err) => console.log("Err DB: ", err.message));
 
-app.use("/", rootRouter);
+app.use("/api", rootRouter);
+
+const errorHandler = (err, req, res, next) => {
+    console.error(err.stack);
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode).json({
+        error: { message: err.message },
+    });
+};
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

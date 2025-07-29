@@ -2,7 +2,14 @@ import { Comment, Task } from "../models/index.js";
 
 export const createComment = async (req, res) => {
     try {
-        const { content } = req.body;
+        // Lấy content từ req.body.data
+        const { content } = req.body.data;
+
+        // Kiểm tra xem content có rỗng không
+        if (!content || content.trim() === "") {
+            return res.status(400).json({ err: "Nội dung bình luận không được để trống." });
+        }
+
         const newComment = new Comment({
             content,
             task: req.params.idTask,
@@ -29,6 +36,9 @@ export const createComment = async (req, res) => {
             comment: findComment,
         });
     } catch (error) {
+        console.log("SERVER: Đã có lỗi xảy ra trong khối catch:", error);
         res.status(500).json({ err: error.message });
     }
 };
+
+// Nếu bạn có các hàm khác trong file này, hãy giữ nguyên chúng ở dưới đây...
